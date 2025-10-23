@@ -36,12 +36,9 @@ while True:
     # Read the next frame from the video capture
     ret, frame = cap.read()
 
-    # Lists to store normalized landmark coordinates and x/y coordinates
-    normalized_landmarks = []  # To store normalized coordinates
-    x_coordinates, y_coordinates = [], []  # To store the x and y coordinates of landmarks
-
-    # Capture another frame (redundant call, you might only need one)
-    ret, frame = cap.read()
+    # Lists to store landmark coordinates
+    landmarks = []  # To store x, y, z coordinates
+    x_coordinates, y_coordinates = [], []  # To store the x and y coordinates for bounding box
 
     # Get the dimensions of the frame (height, width, and color channels)
     height, width, _ = frame.shape
@@ -68,49 +65,48 @@ while True:
                 mp_drawing_styles.get_default_hand_connections_style()  # Style for hand connections
             )
 
-            # Loop through the landmarks of the hand and extract coordinates
-            for hand_landmark in hand_landmarks:
-                landmark_coordinates = hand_landmark.landmark
+            # Extract coordinates for the current hand
+            landmark_coordinates = hand_landmark.landmark
 
-                # Store x and y coordinates of the landmarks
-                for coordinates in landmark_coordinates:
-                    x_coordinates.append(coordinates.x)  # Append x coordinates (normalized 0-1)
-                    y_coordinates.append(coordinates.y)  # Append y coordinates (normalized 0-1)
+            # Store x and y coordinates of the landmarks for bounding box
+            x_coordinates = [coordinates.x for coordinates in landmark_coordinates]
+            y_coordinates = [coordinates.y for coordinates in landmark_coordinates]
 
-                # Find the minimum x and y values (to be used for normalization)
-                min_x, min_y = min(x_coordinates), min(y_coordinates)
+            # Find the minimum x and y values (to be used for normalization)
+            min_x, min_y = min(x_coordinates), min(y_coordinates)
 
-                # Normalize the x and y coordinates based on the minimum values
-                for coordinates in landmark_coordinates:
-                    normalized_x = coordinates.x - min_x  # Normalize x
-                    normalized_y = coordinates.y - min_y  # Normalize y
-                    normalized_landmarks.extend((normalized_x, normalized_y))  # Store normalized values
+            # Normalize the x and y coordinates based on the minimum values (exclude z to match training data)
+            landmarks = []
+            for coordinates in landmark_coordinates:
+                normalized_x = coordinates.x - min_x  # Normalize x
+                normalized_y = coordinates.y - min_y  # Normalize y
+                landmarks.extend([normalized_x, normalized_y])  # Store x, y only
 
-        # Convert normalized coordinates to pixel values for bounding box display
-        x1 = int(min(x_coordinates) * width)  # Minimum x coordinate scaled to the frame width
-        y1 = int(min(y_coordinates) * height)  # Minimum y coordinate scaled to the frame height
-        x2 = int(max(x_coordinates) * width)  # Maximum x coordinate scaled to the frame width
-        y2 = int(max(y_coordinates) * height)  # Maximum y coordinate scaled to the frame height
+            # Convert normalized coordinates to pixel values for bounding box display
+            x1 = int(min(x_coordinates) * width)  # Minimum x coordinate scaled to the frame width
+            y1 = int(min(y_coordinates) * height)  # Minimum y coordinate scaled to the frame height
+            x2 = int(max(x_coordinates) * width)  # Maximum x coordinate scaled to the frame width
+            y2 = int(max(y_coordinates) * height)  # Maximum y coordinate scaled to the frame height
 
-        # Prepare the normalized landmarks to be used for model prediction
-        sample = np.asarray(normalized_landmarks).reshape(1, -1)  # Reshape the landmarks into a sample
-        pred = rf_model.predict(sample)  # Use a pre-trained random forest model to make predictions
+            # Prepare the landmarks to be used for model prediction
+            sample = np.asarray(landmarks).reshape(1, -1)  # Reshape the landmarks into a sample
+            pred = rf_model.predict(sample)  # Use a pre-trained random forest model to make predictions
 
-        # Get the predicted character/label (from a pre-defined labels list) based on model output
-        predicted_character = labels[int(pred[0])]
+            # Get the predicted character/label (from a pre-defined labels list) based on model output
+            predicted_character = labels[int(pred[0])]
 
-        # Draw a rectangle around the detected hand based on the bounding box
-        cv2.rectangle(frame, (x1 + 10, y1 + 10), (x2, y2), (100, 200, 100), 4)  # Green rectangle
+            # Draw a rectangle around the detected hand based on the bounding box
+            cv2.rectangle(frame, (x1 + 10, y1 + 10), (x2, y2), (100, 200, 100), 4)  # Green rectangle
 
-        # Display the predicted character as text on the frame
-        cv2.putText(img=frame,                          # Image/frame on which to put text
-                    text=predicted_character,           # Text to display (predicted character)
-                    org=(x1, y1),                       # Text position (top-left corner of the bounding box)
-                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,  # Font type
-                    fontScale=2,                        # Font scale (size)
-                    color=(0, 0, 0),                    # Text color (black)
-                    thickness=3,                        # Thickness of the text
-                    lineType=cv2.LINE_AA)               # Anti-aliased line for smooth text rendering
+            # Display the predicted character as text on the frame
+            cv2.putText(img=frame,                          # Image/frame on which to put text
+                        text=predicted_character,           # Text to display (predicted character)
+                        org=(x1, y1),                       # Text position (top-left corner of the bounding box)
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX,  # Font type
+                        fontScale=2,                        # Font scale (size)
+                        color=(0, 0, 0),                    # Text color (black)
+                        thickness=3,                        # Thickness of the text
+                        lineType=cv2.LINE_AA)               # Anti-aliased line for smooth text rendering
 
     # Display the video frame with landmarks, bounding box, and predicted character in a window
     cv2.imshow("Video Mode", frame)

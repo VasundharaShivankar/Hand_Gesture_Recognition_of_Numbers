@@ -9,7 +9,7 @@ if not os.path.exists(data_dir):
     os.makedirs(data_dir)
 
 num_classes = 10
-dataset_size = 1000
+dataset_size = 100  # Reduced to 100 images per class for practicality
 
 # Initialize video capture object to read from the default webcam (device 0)
 cap = cv2.VideoCapture(0)
