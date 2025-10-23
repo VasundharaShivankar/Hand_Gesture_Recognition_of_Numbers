@@ -48,4 +48,3 @@ The system provides real-time number predictions (0-9), updating with each frame
 Project idea inspired by (https://github.com/21f3000413/Real-Time-Gesture-Based-Number-Recognition) by Aryan (GitHub username: 21f3000413)
 
 **Developed by **Vasundhara Shivankar** 💫  
-> "Empowering interaction through vision and machine learning."
